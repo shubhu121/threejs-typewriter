@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Field Standard No. 8</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Special+Elite&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="stage"></canvas>
+      <div id="vignette"></div>
+      <div id="grain"></div>
+
+      <div id="loader">
+        <p class="loader-kicker">Hartford, 1938</p>
+        <h1 class="loader-title">Field Standard No. 8</h1>
+        <div class="loader-rule"></div>
+        <p class="loader-wait">Winding the mainspring</p>
+      </div>
+
+      <header id="masthead" class="ui-hidden">
+        <p class="eyebrow">Manual · Pica 10 · Bichrome</p>
+        <h1>Field Standard No. 8</h1>
+      </header>
+
+      <nav id="systems" class="ui-hidden" aria-label="Mechanical systems">
+        <p class="nav-label">The machine</p>
+        <button data-focus="typebars" type="button">Type bars</button>
+        <button data-focus="ribbon" type="button">Ribbon</button>
+        <button data-focus="carriage" type="button">Escapement</button>
+        <button data-focus="platen" type="button">Platen</button>
+        <button data-focus="shift" type="button">Shift</button>
+        <button data-focus="bell" type="button">Margin bell</button>
+      </nav>
+
+      <aside id="placard" hidden>
+        <p class="placard-index"></p>
+        <h2 class="placard-title"></h2>
+        <p class="placard-body"></p>
+        <button id="placard-back" type="button">Step back</button>
+      </aside>
+
+      <div id="labels"></div>
+
+      <footer id="dock" class="ui-hidden">
+        <p id="hint">Type, or press a key on the machine.</p>
+        <div class="dock-actions">
+          <button id="btn-return" type="button">Return</button>
+          <button id="btn-color" type="button">Ribbon: black</button>
+          <button id="btn-page" type="button">Lift the page</button>
+          <button id="btn-sound" type="button" aria-pressed="true">Sound on</button>
+        </div>
+      </footer>
+
+      <div id="page-inspect" hidden>
+        <div class="page-frame">
+          <canvas id="page-view"></canvas>
+        </div>
+        <div class="page-bar">
+          <button id="btn-download" type="button">Keep this page</button>
+          <button id="btn-close-page" type="button">Lay it back</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
