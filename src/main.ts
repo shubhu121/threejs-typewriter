@@ -30,10 +30,23 @@ const pageView = document.querySelector("#page-view") as HTMLCanvasElement;
 const btnColor = document.querySelector("#btn-color") as HTMLButtonElement;
 const btnSound = document.querySelector("#btn-sound") as HTMLButtonElement;
 
+const TYPE_SAMPLE =
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,;:'\"!?-_/&$¢() ";
 await Promise.race([
-  document.fonts.ready,
+  Promise.all([
+    document.fonts.ready,
+    document.fonts.load('64px "Special Elite"', TYPE_SAMPLE),
+    document.fonts.load('108px "Cormorant Garamond"'),
+  ]),
   new Promise<void>((resolve) => setTimeout(resolve, 2500)),
 ]);
+{
+  const warm = document.createElement("canvas").getContext("2d");
+  if (warm) {
+    warm.font = '64px "Special Elite", "Courier New", monospace';
+    warm.fillText(TYPE_SAMPLE, 0, 50);
+  }
+}
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -83,7 +96,9 @@ scene.add(floor);
 scene.add(buildDesk(mats));
 
 const paper = new PaperSheet();
-const rig = buildTypewriter(mats, paper.texture);
+paper.texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+paper.lineTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const rig = buildTypewriter(mats, paper.texture, paper.lineTexture);
 scene.add(rig.root);
 
 const keyLight = new THREE.DirectionalLight(0xffe2c4, 2.35);
@@ -171,8 +186,8 @@ canvas.addEventListener("pointermove", (event) => {
   document.body.classList.toggle("is-hovering-key", hoveringKey || pick === "focus");
 });
 
-canvas.addEventListener("pointerdown", async (event) => {
-  await audio.unlock();
+canvas.addEventListener("pointerdown", (event) => {
+  audio.unlock();
   setPointer(event);
   const hit = hits();
   if (!hit) return;
@@ -199,8 +214,8 @@ canvas.addEventListener("pointerdown", async (event) => {
   }
 });
 
-window.addEventListener("keydown", async (event) => {
-  await audio.unlock();
+window.addEventListener("keydown", (event) => {
+  audio.unlock();
   if (event.code === "Escape") {
     if (!pageInspect.hidden) closePage();
     else focus.goHome();
@@ -218,8 +233,9 @@ window.addEventListener("keydown", async (event) => {
   }
   const spec = CODE_TO_KEY.get(event.code);
   if (!spec) return;
-  if (spec.kind === "tab") event.preventDefault();
-  machine.handleKey(spec);
+  event.preventDefault();
+  if (event.shiftKey) machine.setShift(true);
+  machine.handleKey(spec, event.key);
 });
 
 window.addEventListener("keyup", (event) => {

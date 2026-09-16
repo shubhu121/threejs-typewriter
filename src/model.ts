@@ -41,8 +41,8 @@ export type TypewriterRig = {
 };
 
 const KEY_PITCH = 0.0186;
-const ROW_Z = [0.116, 0.097, 0.078, 0.059, 0.04];
-const ROW_Y = [0.081, 0.078, 0.075, 0.072, 0.068];
+const ROW_Z = [0.05, 0.07, 0.09, 0.11, 0.128];
+const ROW_Y = [0.082, 0.079, 0.076, 0.073, 0.069];
 const STRIKE = new THREE.Vector3(0, 0.172, -0.048);
 
 const ghost = new THREE.MeshBasicMaterial({
@@ -84,6 +84,7 @@ function volume(
 export function buildTypewriter(
   mats: Materials,
   paperTexture: THREE.CanvasTexture,
+  lineTexture: THREE.CanvasTexture,
 ): TypewriterRig {
   const root = new THREE.Group();
   root.name = "typewriter";
@@ -101,7 +102,7 @@ export function buildTypewriter(
   const ribbon = buildRibbon(mats, pickables);
   root.add(ribbon.root);
 
-  const carriage = buildCarriage(mats, paperTexture, pickables);
+  const carriage = buildCarriage(mats, paperTexture, lineTexture, pickables);
   root.add(carriage.root);
 
   const extras = buildExtras(mats, pickables);
@@ -162,6 +163,22 @@ function buildBody(mats: Materials): THREE.Group {
 
   const apron = mesh(roundedBox(0.32, 0.028, 0.03, 0.004), mats.enamel, 0, 0.05, 0.138);
   g.add(apron);
+
+  const nameplate = mesh(
+    new THREE.PlaneGeometry(0.1, 0.024),
+    new THREE.MeshPhysicalMaterial({
+      map: makeDecal(),
+      transparent: true,
+      roughness: 0.42,
+      metalness: 0.55,
+      envMapIntensity: 0.8,
+    }),
+    0,
+    0.062,
+    0.154,
+  );
+  nameplate.castShadow = false;
+  g.add(nameplate);
 
   const rail = mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.34, 12), mats.chrome, 0, 0.148, -0.078);
   rail.rotation.z = Math.PI / 2;
@@ -252,35 +269,34 @@ function buildKeyboard(mats: Materials, pickables: THREE.Object3D[]) {
     const isSpace = spec.kind === "space";
     const capW = isSpace ? span * KEY_PITCH * 0.92 : Math.min(0.017, span * KEY_PITCH * 0.86);
     const capD = isSpace ? 0.014 : 0.016;
-    const capH = 0.006;
+    const capH = 0.0042;
 
     const rim = mesh(
-      isSpace ? roundedBox(capW, capH, capD, 0.002) : new THREE.CylinderGeometry(0.0088, 0.0092, capH, 20),
+      isSpace
+        ? roundedBox(capW, capH, capD, 0.002)
+        : new THREE.CylinderGeometry(0.0086, 0.009, capH, 22),
       mats.chrome,
       0,
-      0.016,
+      0.015,
       -0.006,
     );
     group.add(rim);
 
     const insertMat = mats.ivory.clone();
+    insertMat.envMapIntensity = 0.25;
+    insertMat.roughness = 0.58;
     if (spec.label) {
       insertMat.map = makeKeyCap(spec.label, spec.shiftLabel, Boolean(spec.dark));
       insertMat.color.set(0xffffff);
     } else if (spec.dark) {
       insertMat.color.set(0x1a1612);
     }
-    const insert = mesh(
-      isSpace
-        ? roundedBox(capW - 0.003, capH * 0.5, capD - 0.003, 0.0015)
-        : new THREE.CylinderGeometry(0.0074, 0.0074, capH * 0.45, 20),
-      insertMat,
-      0,
-      0.02,
-      -0.006,
-    );
-    insert.castShadow = false;
-    group.add(insert);
+    const face = isSpace
+      ? mesh(new THREE.PlaneGeometry(capW - 0.003, capD - 0.003), insertMat, 0, 0.0174, -0.006)
+      : mesh(new THREE.CircleGeometry(0.0072, 24), insertMat, 0, 0.0174, -0.006);
+    face.rotation.x = -Math.PI / 2;
+    face.castShadow = false;
+    group.add(face);
 
     const stem = mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.018, 8), mats.nickel, 0, 0.006, -0.006);
     group.add(stem);
@@ -288,7 +304,7 @@ function buildKeyboard(mats: Materials, pickables: THREE.Object3D[]) {
     const lever = mesh(new THREE.BoxGeometry(0.003, 0.002, 0.055), mats.nickel, 0, 0.002, -0.03);
     group.add(lever);
 
-    mark(insert, { pick: "key", keyId: spec.id }, pickables);
+    mark(face, { pick: "key", keyId: spec.id }, pickables);
     mark(rim, { pick: "key", keyId: spec.id }, pickables);
 
     root.add(group);
@@ -316,7 +332,7 @@ function buildBasket(mats: Materials, pickables: THREE.Object3D[]) {
   segment.rotation.set(Math.PI / 2, 0, Math.PI);
   root.add(segment);
 
-  const comb = mesh(roundedBox(0.16, 0.012, 0.018, 0.002), mats.nickel, 0, 0.118, 0.01);
+  const comb = mesh(roundedBox(0.14, 0.005, 0.008, 0.001), mats.enamel, 0, 0.12, 0.006);
   root.add(comb);
 
   for (let i = 0; i < n; i++) {
@@ -327,9 +343,9 @@ function buildBasket(mats: Materials, pickables: THREE.Object3D[]) {
     pivot.position.set(Math.sin(theta) * r, 0.094, 0.018 + Math.cos(theta) * r * 0.18);
     pivot.rotation.y = -theta;
 
-    const arm = mesh(new THREE.BoxGeometry(0.0025, 0.002, barLen), mats.nickel);
+    const arm = mesh(new THREE.BoxGeometry(0.0032, 0.0026, barLen), mats.enamel);
     arm.position.z = barLen * 0.5;
-    const slug = mesh(new THREE.BoxGeometry(0.0072, 0.0052, 0.0042), mats.chrome);
+    const slug = mesh(new THREE.BoxGeometry(0.0072, 0.0052, 0.0042), mats.nickel);
     slug.position.z = barLen;
     pivot.add(arm, slug);
     const rest = 0.62;
@@ -354,11 +370,11 @@ function buildBasket(mats: Materials, pickables: THREE.Object3D[]) {
 
 function ribbonPath(): THREE.Curve<THREE.Vector3> {
   return new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.092, 0.138, -0.012),
-    new THREE.Vector3(-0.04, 0.15, -0.03),
-    new THREE.Vector3(0, 0.158, -0.04),
-    new THREE.Vector3(0.04, 0.15, -0.03),
-    new THREE.Vector3(0.092, 0.138, -0.012),
+    new THREE.Vector3(-0.092, 0.136, -0.012),
+    new THREE.Vector3(-0.028, 0.152, -0.038),
+    new THREE.Vector3(0, 0.156, -0.044),
+    new THREE.Vector3(0.028, 0.152, -0.038),
+    new THREE.Vector3(0.092, 0.136, -0.012),
   ]);
 }
 
@@ -382,22 +398,22 @@ function buildRibbon(mats: Materials, pickables: THREE.Object3D[]) {
   const spoolR = makeSpool(0.1);
   root.add(spoolL, spoolR);
 
-  const ribbon = mesh(new THREE.TubeGeometry(ribbonPath(), 32, 0.0032, 5, false), mats.ribbon);
+  const ribbon = mesh(new THREE.TubeGeometry(ribbonPath(), 32, 0.0017, 5, false), mats.ribbon);
   ribbon.castShadow = false;
   root.add(ribbon);
 
   const vibrator = new THREE.Group();
-  vibrator.position.set(0, 0.154, -0.038);
-  const fork = mesh(new THREE.BoxGeometry(0.018, 0.012, 0.003), mats.nickel);
-  const tineL = mesh(new THREE.BoxGeometry(0.002, 0.014, 0.002), mats.nickel, -0.007, 0.004, 0);
-  const tineR = mesh(new THREE.BoxGeometry(0.002, 0.014, 0.002), mats.nickel, 0.007, 0.004, 0);
+  vibrator.position.set(0, 0.154, -0.042);
+  const fork = mesh(new THREE.BoxGeometry(0.016, 0.008, 0.0022), mats.steel);
+  const tineL = mesh(new THREE.BoxGeometry(0.0016, 0.012, 0.0016), mats.steel, -0.0065, 0.004, 0);
+  const tineR = mesh(new THREE.BoxGeometry(0.0016, 0.012, 0.0016), mats.steel, 0.0065, 0.004, 0);
   vibrator.add(fork, tineL, tineR);
   root.add(vibrator);
 
   const colorLever = new THREE.Group();
-  colorLever.position.set(0.072, 0.1, 0.042);
-  const stick = mesh(new THREE.BoxGeometry(0.004, 0.028, 0.004), mats.chrome, 0, 0.01, 0);
-  const knob = mesh(new THREE.SphereGeometry(0.006, 12, 10), mats.enamel, 0, 0.026, 0);
+  colorLever.position.set(0.132, 0.086, 0.092);
+  const stick = mesh(new THREE.BoxGeometry(0.003, 0.018, 0.003), mats.chrome, 0, 0.008, 0);
+  const knob = mesh(new THREE.SphereGeometry(0.005, 12, 10), mats.enamel, 0, 0.018, 0);
   colorLever.add(stick, knob);
   mark(knob, { pick: "color" }, pickables);
   mark(stick, { pick: "color" }, pickables);
@@ -411,6 +427,7 @@ function buildRibbon(mats: Materials, pickables: THREE.Object3D[]) {
 function buildCarriage(
   mats: Materials,
   paperTexture: THREE.CanvasTexture,
+  lineTexture: THREE.CanvasTexture,
   pickables: THREE.Object3D[],
 ) {
   const root = new THREE.Group();
@@ -474,6 +491,9 @@ function buildCarriage(
   const paperMat = mats.paper.clone();
   paperMat.map = paperTexture;
   paperMat.color.set(0xffffff);
+  paperMat.envMapIntensity = 0.08;
+  paperMat.roughness = 0.94;
+  paperMat.metalness = 0;
   const paperGeo = new THREE.PlaneGeometry(0.216, 0.17, 12, 10);
   const pos = paperGeo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -485,6 +505,16 @@ function buildCarriage(
   paper.rotation.x = -0.22;
   paper.castShadow = false;
   root.add(paper);
+
+  const lineMat = mats.paper.clone();
+  lineMat.map = lineTexture;
+  lineMat.color.set(0xffffff);
+  lineMat.envMapIntensity = 0.04;
+  lineMat.roughness = 0.96;
+  const lineStrip = mesh(new THREE.PlaneGeometry(0.2, 0.02), lineMat, 0, 0.188, -0.046);
+  lineStrip.rotation.x = -0.12;
+  lineStrip.castShadow = false;
+  root.add(lineStrip);
 
   const wrap = mesh(
     new THREE.CylinderGeometry(0.0235, 0.0235, 0.21, 24, 1, true, Math.PI * 0.15, Math.PI * 0.7),

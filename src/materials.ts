@@ -21,6 +21,7 @@ export type Materials = {
   ribbon: THREE.MeshPhysicalMaterial;
   paper: THREE.MeshPhysicalMaterial;
   felt: THREE.MeshStandardMaterial;
+  steel: THREE.MeshPhysicalMaterial;
 };
 
 export function createMaterials(): Materials {
@@ -126,6 +127,18 @@ export function createMaterials(): Materials {
     metalness: 0,
   });
 
+  const steel = new THREE.MeshPhysicalMaterial({
+    color: 0x4a4642,
+    roughness: 0.48,
+    metalness: 0.78,
+    envMapIntensity: 0.65,
+  });
+
+  paper.envMapIntensity = 0.12;
+  paper.roughness = 0.92;
+
+  ivory.envMapIntensity = 0.35;
+
   return {
     enamel,
     enamelGloss,
@@ -139,5 +152,6 @@ export function createMaterials(): Materials {
     ribbon: ribbonMat,
     paper,
     felt,
+    steel,
   };
 }

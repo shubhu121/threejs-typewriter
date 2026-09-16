@@ -45,11 +45,11 @@ export class Machine {
     return this.shifted || this.shiftLocked;
   }
 
-  handleKey(spec: KeySpec): void {
+  handleKey(spec: KeySpec, typedChar?: string): void {
     if (this.returning) return;
     switch (spec.kind) {
       case "char":
-        this.stroke(spec);
+        this.stroke(spec, typedChar);
         break;
       case "space":
         this.space(spec);
@@ -104,7 +104,6 @@ export class Machine {
       this.onHint("The page is full. Lift it, or keep going into the platen.");
     }
     this.returning = true;
-    this.pressKeyVisual("dummy");
     this.flickReturnLever();
     const duration = 0.42 + Math.min(0.45, this.col * 0.008);
     this.audio.carriageReturn(duration);
@@ -112,6 +111,7 @@ export class Machine {
     this.row = Math.min(ROWS - 1, this.row + 1);
     this.bellRang = false;
     this.marginReleased = false;
+    this.paper.showLine(this.row);
 
     gsap.to(this.rig.carriage.position, {
       x: this.carriageX(),
@@ -144,22 +144,29 @@ export class Machine {
     });
   }
 
-  private stroke(spec: KeySpec): void {
+  private stroke(spec: KeySpec, typedChar?: string): void {
     if (this.atMargin()) {
       this.audio.keyDown();
       this.pressKey(spec);
       this.onHint("Margin. Return the carriage, or release it.");
       return;
     }
-    const glyph = this.shiftOn ? spec.shifted : spec.unshifted;
+    const glyph =
+      typedChar && typedChar.length === 1
+        ? typedChar
+        : this.shiftOn
+          ? spec.shifted
+          : spec.unshifted;
+    const col = this.col;
+    const row = this.row;
+    this.paper.imprint(glyph, col, row, this.ribbon);
+    this.advance();
     this.pressKey(spec);
     this.swingBar(spec.id);
     this.pulseVibrator();
     const idx = this.barIndex.get(spec.id) ?? 0;
     gsap.delayedCall(0.05, () => {
       this.audio.strike(idx);
-      this.paper.imprint(glyph, this.col, this.row, this.ribbon);
-      this.advance();
       this.tickRibbon();
       this.tickEscapement();
     });
@@ -173,7 +180,7 @@ export class Machine {
     }
     this.pressKey(spec);
     this.audio.space();
-    gsap.delayedCall(0.03, () => this.advance());
+    this.advance();
   }
 
   private backspace(spec: KeySpec): void {
@@ -196,6 +203,7 @@ export class Machine {
     if (this.col > COLS - 1) this.col = COLS - 1;
     this.maybeBell();
     this.slideCarriage();
+    this.paper.showLine(this.row);
   }
 
   private atMargin(): boolean {
@@ -239,10 +247,6 @@ export class Machine {
         });
       },
     });
-  }
-
-  private pressKeyVisual(_id: string): void {
-    void _id;
   }
 
   private swingBar(id: string): void {

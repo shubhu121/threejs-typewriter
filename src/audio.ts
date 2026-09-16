@@ -5,25 +5,24 @@ export class TypewriterAudio {
   muted = false;
   enabled = true;
 
-  async unlock(): Promise<void> {
-    if (this.ctx) {
-      if (this.ctx.state === "suspended") await this.ctx.resume();
-      return;
+  unlock(): void {
+    if (!this.ctx) {
+      const ctx = new AudioContext();
+      const master = ctx.createGain();
+      master.gain.value = this.muted ? 0 : 0.7;
+      const convolver = ctx.createConvolver();
+      convolver.buffer = this.makeIR(ctx);
+      const wet = ctx.createGain();
+      wet.gain.value = 0.18;
+      const dry = ctx.createGain();
+      dry.gain.value = 0.9;
+      master.connect(dry).connect(ctx.destination);
+      master.connect(convolver).connect(wet).connect(ctx.destination);
+      this.ctx = ctx;
+      this.master = master;
+      this.noise = this.makeNoise(ctx, 1);
     }
-    const ctx = new AudioContext();
-    const master = ctx.createGain();
-    master.gain.value = 0.7;
-    const convolver = ctx.createConvolver();
-    convolver.buffer = this.makeIR(ctx);
-    const wet = ctx.createGain();
-    wet.gain.value = 0.18;
-    const dry = ctx.createGain();
-    dry.gain.value = 0.9;
-    master.connect(dry).connect(ctx.destination);
-    master.connect(convolver).connect(wet).connect(ctx.destination);
-    this.ctx = ctx;
-    this.master = master;
-    this.noise = this.makeNoise(ctx, 1);
+    if (this.ctx.state === "suspended") void this.ctx.resume();
   }
 
   setMuted(muted: boolean): void {
